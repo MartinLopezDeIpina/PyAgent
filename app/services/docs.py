@@ -2,8 +2,8 @@ import sys
 
 from flask import jsonify
 from sentence_transformers import SentenceTransformer
-from models import db
-from models.Doc import DocClass, DocFunction
+from app.models import db
+from app.models.Doc import DocClass, DocFunction
 import importlib
 import importlib.util
 import inspect
@@ -25,6 +25,12 @@ def add_library_class_functions_to_db(library_name: str, module):
             class_name = obj.__name__
             class_doc = inspect.getdoc(obj) or ""
 
+            existing_class = DocClass.query.filter_by(library=library_name, class_name=class_name).first()
+            if existing_class:
+                print(
+                    f"La clase {class_name} de la librería {library_name} ya existe en la base de datos. Omitiendo...")
+                continue
+
             print(f"añadiendo clase {class_name} de librería {library_name}")
             doc_class_obj = DocClass(
                 library=library_name,
@@ -40,6 +46,7 @@ def add_library_class_functions_to_db(library_name: str, module):
                         signature = str(inspect.signature(method_obj))
                         full_function_name = f"{method_name}{signature}"
 
+                        print(f"añadiendo función {full_function_name} de clase {class_name} de librería {library_name}")
                         doc_function_obj = DocFunction(
                             function_name = full_function_name,
                             function_doc=method_doc,
@@ -112,11 +119,6 @@ def rag_docs_functions(library_name: str, query: str, top_k = 10):
         })
 
     return jsonify(list(results_class_grouped.values()))
-
-
-
-
-    return results
 
 
 
