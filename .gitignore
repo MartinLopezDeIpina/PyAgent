@@ -1,2 +1,9 @@
-.env
-.venv/*
+mcp_server/.idea
+mcp_tools/.idea
+PyAgent/.idea
+
+mcp_server/mcp_venv
+mcp_tools/venv
+Pyagent/.venv
+
+.venv

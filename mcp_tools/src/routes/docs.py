@@ -1,6 +1,6 @@
 from flask import Blueprint
-from app.models.Doc import DocClass
-from app.services.docs import add_library_to_docs, rag_docs_functions
+from src.models.Doc import DocClass
+from src.services.docs import add_library_to_docs, rag_docs_functions
 
 docs_bp = Blueprint('docs', __name__)
 

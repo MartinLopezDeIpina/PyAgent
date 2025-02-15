@@ -1,5 +1,5 @@
 from flask import Blueprint
-from app.services.stackoverflow import rag_stackoverflow
+from src.services.stackoverflow import rag_stackoverflow
 
 stackoverflow_bp = Blueprint('stackoverflow', __name__)
 

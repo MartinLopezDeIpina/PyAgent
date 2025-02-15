@@ -2,8 +2,8 @@ import sys
 
 from flask import jsonify
 from sentence_transformers import SentenceTransformer
-from app.models import db
-from app.models.Doc import DocClass, DocFunction
+from src.models import db
+from src.models.Doc import DocClass, DocFunction
 import importlib
 import importlib.util
 import inspect

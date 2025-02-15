@@ -1,8 +1,10 @@
 from flask import Flask
-from routes.docs import docs_bp
-from routes.stackoverflow import stackoverflow_bp
-from config import Config
-from models import db
+from src.routes.docs import docs_bp
+from src.routes.stackoverflow import stackoverflow_bp
+from src.config import Config
+from src.models import db
+from src.models.Doc import DocClass, DocFunction
+from src.models.Post import Post
 
 app = Flask(__name__)
 

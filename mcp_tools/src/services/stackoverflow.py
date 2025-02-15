@@ -1,8 +1,8 @@
 from flask import jsonify
 from sentence_transformers import SentenceTransformer
 
-from app.models import db
-from app.models.Post import Post
+from src.models import db
+from src.models.Post import Post
 
 
 def rag_stackoverflow(query: str, top_k = 5):

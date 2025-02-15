@@ -1,5 +1,5 @@
 from sqlalchemy import ForeignKeyConstraint
-from app.models import db
+from src.models import db
 from pgvector.sqlalchemy import Vector
 
 class DocClass(db.Model):

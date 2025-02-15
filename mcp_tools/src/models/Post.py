@@ -1,4 +1,4 @@
-from app.models import db
+from src.models import db
 from pgvector.sqlalchemy import Vector
 
 class Post(db.Model):
