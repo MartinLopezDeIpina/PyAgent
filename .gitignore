@@ -1,0 +1,14 @@
+mcp_server/.idea
+mcp_tools/.idea
+PyAgent/.idea
+
+mcp_server/mcp_venv
+mcp_tools/venv
+PyAgent/.venv
+
+mcp_server/.env
+mcp_tools/.env
+PyAgent/.env
+
+mcp_tools/src/backup.sql
+mcp_tools/src/backup.7z
