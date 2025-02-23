@@ -28,12 +28,23 @@ class SimpleSchemaArgs(BaseModel):
             value.pop("title")
         return schema
 
-class LibraryDocs(SimpleSchemaArgs):
-    library_name: str = Field(description="Name of the library.")
+LibraryNames = Literal["pandas", "numpy", "re", "operator", "itertools", "random", "math", "collections", "functools", "sklearn", "datetime", "scipy"]
 
+class StackoverflowQuery(SimpleSchemaArgs):
+    query: str = Field(description="Query to search in Stackoverflow for similar results.")
+
+class LibraryDocsRAG(SimpleSchemaArgs):
+    library_name: str = Field(description="Name of the library.")
+    query: str = Field(description="Query that represents the reason to use the library.")
+
+class LibraryDocsInfo(SimpleSchemaArgs):
+    library_name: str = Field(description="Name of the library.")
+    explanation: str = Field(description="Explanation of where to apply this library in the code.")
+    docs: List[str] = Field(description="List of useful docs to use.")
 
 class ProblemSolvingSteps(SimpleSchemaArgs):
     steps: conlist(str, min_length=1, max_length=5) = Field(description="List of steps in order to solve the coding problem")
-    library_docs:
+    libraries_to_use: List[LibraryNames] = Field(description="Names of the libraries to use.")
+    library_docs: List[LibraryDocsInfo] = Field(description="Documentation of libraries to use.", default = None)
 
 

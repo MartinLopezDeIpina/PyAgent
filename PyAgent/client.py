@@ -5,7 +5,6 @@ from typing import Optional
 from contextlib import AsyncExitStack
 
 from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
 from mcp.client.sse import sse_client
 from dotenv import load_dotenv
 from anthropic import Anthropic

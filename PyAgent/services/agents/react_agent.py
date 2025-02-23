@@ -13,11 +13,12 @@ from langchain_core.tools import tool, Tool, StructuredTool
 import json
 
 from models import ToolCallAction
-from validation_utils import format_messages_into_json, validate_response, get_tool_by_name
+from services.agents.tools import ToolManager
+from validation_utils import AgentValidator
 
 initial_prompt_template_str="""{general_instructions}
 
-Solve the question answering task with interleaving Thought, Action, Observation steps. The action represents the called tool, and the observation represents the tool's output. You task is to identify the next action based on the observation and the thinking process.
+Solve the question answering task with interleaving Think, Action, Observation steps. The action represents the called tool, and the observation represents the tool's output. You task is to identify the next action based on the observation and the thinking process.
 
 You have {num_tools} possible actions, always think about the best option, only choose one option, answer with the ANSWER tool when you are sure of the result: 
 {tools_info}
@@ -31,12 +32,10 @@ For example, for the action "ANSWER" with the argument "value" with value "000.0
 The question is: {question}
 Begin!"""
 
-
-
 class ReactAgent:
     def create_initial_message(self):
         tools_info = "\n".join([
-                                   f"{i + 1}. {tool.name.upper()}: {tool.description}; Required args schema: {tool.args_schema.get_simple_schema()}"
+                                   f"{i + 1}. {tool.name.upper()}: {tool.description}"
                                    for i, tool in enumerate(self.tools)])
 
         initial_message_template = HumanMessagePromptTemplate.from_template(initial_prompt_template_str)
@@ -54,17 +53,17 @@ class ReactAgent:
             llm: BaseChatModel,
             general_instructions: str,
             tools: List[StructuredTool],
+            max_messages: int = 7
     ):
-        self.llm = llm
+        self.llm = llm.bind_tools(tools)
         self.general_instructions = general_instructions,
         self.tools = tools
         self.finished = False
-        self.validation_errors = 0
-        self.max_validation_errors = 3
         self.messages = []
+        self.validator = AgentValidator()
+        self.max_messages = max_messages
 
     def is_finished(self):
-        """todo: check if thea agent's scratchpad is too long"""
         return self.finished
 
     async def run(self, question: str, reset=True):
@@ -83,35 +82,27 @@ class ReactAgent:
         return self.messages
 
     def forward(self)-> List[BaseMessage]:
-        # Si da muchos problemas gestionar mejor validación
         action = None
+        self.validator.reset_attempts()
+
         while not action:
             print("Forwarding message")
-            # Remove tool call actions
-            send_messages = [message for message in self.messages if type(message) != ToolCallAction]
-            response = self.llm.invoke(send_messages)
+            response = self.llm.invoke(self.messages)
             print(f"Response: {response}")
-            try:
-                action = validate_response(response, self.tools)
-            except Exception as e:
-                print(f"Error validating response: {e}")
-                self.validation_errors += 1
-                if self.validation_errors > self.max_validation_errors:
-                    self.finished = True
-                    raise Exception(f"Too many validation errors: {self.validation_errors}, stopping agent")
+
+            action = self.validator.validate_response(response, self.tools)
 
         new_messages = []
 
         new_messages.append(response)
-        if action.action.lower() == "answer":
+        if action.action.lower() == "answer" or action.action.lower() == "error":
             self.finished = True
             message = AIMessage(f"{action.args['value']}")
             new_messages.append(message)
         else:
-            tool = get_tool_by_name(self.tools, action.action)
+            tool = self.validator.get_tool_by_name(self.tools, action.action)
             tool_args = action.args
             message = ToolCallAction(
-                content=f"\n<Action> {tool.name} with args {tool_args} </Action>\n",
                 tool_name = tool.name,
                 tool_args = tool_args
             )
@@ -124,13 +115,12 @@ class ReactAgent:
         print(f"New messages: {new_messages}")
         self.messages.extend(new_messages)
 
-        if len(self.messages) > 7:
+        if len(self.messages) > self.max_messages:
             self.finished = True
 
         if type(self.messages[-1]) == ToolCallAction:
             tool_response = await self.execute_tool(self.messages[-1])
-            tool_content = f"\n<Observation> {tool_response} </Observation>\n"
-            self.messages.append(ToolMessage(content=tool_content, tool_call_id=len(self.messages)))
+            self.messages.append(ToolMessage(content=tool_response, tool_call_id=len(self.messages)))
 
     async def execute_tool(self, tool_call: ToolCallAction) -> Any:
         try:
@@ -147,3 +137,22 @@ class ReactAgent:
 
         except Exception as e:
             return f"Error ejecutando la herramienta: {str(e)}"
+
+
+class AnalyzerAgent(ReactAgent):
+    def __init__(self, llm: BaseChatModel, tool_manager: ToolManager):
+        tool_names = ["library_docs_rag", "create_problem_solving_steps"]
+        tools = tool_manager.get_tool_instances(tool_names)
+
+        general_instructions = """You are a planner agent, your task is to create a step-by-step list to solve a python problem.
+        You need to choose which of the possible python libraries to use in order to solve the problem, if it is not necessary then do not choose any library.
+        After selecting the libraries, you must call the tool to make a rag in the library's documentation. The rag operation will generate a couple of documents, from which you will need to select the useful ones and include their description in the final plan.
+        
+        To sum up: 
+            - Define the steps to solve the problem in natural language.
+            - Choose the libraries (if any) to use. 
+            - Retrieve the libraries docs.
+            - Decide what classes / functions are useful
+            - Call the final answer with the steps, useful docs and explanation.
+        """
+        super().__init__(llm=llm, tools=tools, general_instructions=general_instructions)
